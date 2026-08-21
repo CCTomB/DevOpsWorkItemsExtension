@@ -38,19 +38,14 @@ steps:
     } else {
       $env:COMMIT_HASH = "$(Build.SourceVersion)"
     }
-    $oauthToken = "$(System.AccessToken)"
-    $patToken = "$(PERSONAL_ACCESS_TOKEN)"
-    $hasOAuthToken = -not [string]::IsNullOrWhiteSpace($oauthToken) -and $oauthToken -ne '$(System.AccessToken)'
-    $hasPatToken = -not [string]::IsNullOrWhiteSpace($patToken) -and $patToken -ne '$(PERSONAL_ACCESS_TOKEN)'
+    $oauthToken = $env:SYSTEM_ACCESSTOKEN
+    $patToken = $env:PERSONAL_ACCESS_TOKEN
+    $hasOAuthToken = -not [string]::IsNullOrWhiteSpace($oauthToken)
+    $hasPatToken = -not [string]::IsNullOrWhiteSpace($patToken)
     $tokenState = if ($hasOAuthToken) { "System.AccessToken present ($($oauthToken.Length) characters)" } elseif ($hasPatToken) { "PAT present ($($patToken.Length) characters)" } else { 'missing' }
     Write-Host "Azure DevOps token state: $tokenState"
     if ($tokenState -eq 'missing') {
       throw 'No Azure DevOps token is available. Enable OAuth access for the pipeline job or configure PERSONAL_ACCESS_TOKEN as a secret variable.'
-    }
-    if ($hasOAuthToken) {
-      $env:SYSTEM_ACCESSTOKEN = $oauthToken
-    } else {
-      $env:PERSONAL_ACCESS_TOKEN = $patToken
     }
     if ('${{ parameters.workItemId }}' -ne '') {
       $env:WORK_ITEM_ID = '${{ parameters.workItemId }}'
@@ -60,4 +55,7 @@ steps:
 
     Write-Host "Running tool for work item: $env:WORK_ITEM_ID"
     dotnet "$(Build.ArtifactStagingDirectory)/publish/DevOpsWorkItems.dll" --workItemId=$env:WORK_ITEM_ID
+  env:
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+    PERSONAL_ACCESS_TOKEN: $(PERSONAL_ACCESS_TOKEN)
   displayName: 'Run linking app'
