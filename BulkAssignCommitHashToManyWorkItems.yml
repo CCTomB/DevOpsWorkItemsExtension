@@ -38,7 +38,10 @@ steps:
     } else {
       $env:COMMIT_HASH = "$(Build.SourceVersion)"
     }
-    if ([string]::IsNullOrWhiteSpace($env:PERSONAL_ACCESS_TOKEN) -or $env:PERSONAL_ACCESS_TOKEN -eq '$(PERSONAL_ACCESS_TOKEN)') {
+    $token = $env:PERSONAL_ACCESS_TOKEN
+    $tokenState = if ($null -eq $token) { 'missing' } elseif ($token -eq '$(PERSONAL_ACCESS_TOKEN)') { 'unexpanded' } elseif ([string]::IsNullOrWhiteSpace($token)) { 'empty' } else { "present ($($token.Length) characters)" }
+    Write-Host "PERSONAL_ACCESS_TOKEN environment state: $tokenState"
+    if ($tokenState -in @('missing', 'unexpanded', 'empty')) {
       throw 'PERSONAL_ACCESS_TOKEN is not configured. Add it as a secret variable on this pipeline or in its variable group.'
     }
     if ('${{ parameters.workItemId }}' -ne '') {
