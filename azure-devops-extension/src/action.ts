@@ -39,9 +39,10 @@ function collectIds(value: unknown): number[] {
   return [];
 }
 
-function getSelectedWorkItemIds(): number[] {
+function getSelectedWorkItemIds(actionContext: unknown): number[] {
   const configuration = SDK.getConfiguration() as Record<string, unknown>;
   const candidates = [
+    actionContext,
     configuration.witInputs,
     configuration.workItemIds,
     configuration.selectedWorkItemIds,
@@ -51,7 +52,20 @@ function getSelectedWorkItemIds(): number[] {
   return [...new Set(candidates.flatMap(collectIds))];
 }
 
-async function queuePipeline(workItemIds: number[]): Promise<void> {
+function getCommitHash(): string {
+  const commitHash = window.prompt('Enter the Git commit hash to link to the selected work items:')?.trim();
+  if (!commitHash) {
+    throw new Error('Commit hash entry was cancelled.');
+  }
+
+  if (!/^[0-9a-f]{7,64}$/i.test(commitHash)) {
+    throw new Error('Enter a Git commit hash between 7 and 64 hexadecimal characters.');
+  }
+
+  return commitHash;
+}
+
+async function queuePipeline(workItemIds: number[], commitHash: string): Promise<void> {
   const webContext = SDK.getWebContext();
   const projectId = webContext.project?.id;
   if (!projectId) {
@@ -69,7 +83,8 @@ async function queuePipeline(workItemIds: number[]): Promise<void> {
   const queuedBuild = await buildClient.queueBuild({
     definition,
     templateParameters: {
-      workItemId: workItemIds.join(',')
+      workItemId: workItemIds.join(','),
+      commitHash
     }
   } as unknown as Build, projectId, undefined, undefined, undefined, definition.id);
 
@@ -77,22 +92,24 @@ async function queuePipeline(workItemIds: number[]): Promise<void> {
   setStatus(`Queued ${pipelineName} for ${workItemIds.length} work items${buildNumber ? ` (run ${buildNumber})` : ''}.`);
 }
 
-async function main(): Promise<void> {
-  await SDK.init();
-  await SDK.ready();
+SDK.register('bulk-assign-commit-hash-action', () => ({
+  execute: async (actionContext: unknown) => {
+    try {
+      const workItemIds = getSelectedWorkItemIds(actionContext);
+      if (workItemIds.length === 0) {
+        throw new Error('No selected work item IDs were supplied by Azure DevOps.');
+      }
 
-  const workItemIds = getSelectedWorkItemIds();
-  if (workItemIds.length === 0) {
-    throw new Error('No selected work item IDs were supplied by Azure DevOps. Select multiple work items and try again.');
+      const commitHash = getCommitHash();
+      setStatus(`Queueing for ${workItemIds.length} work items...`);
+      await queuePipeline(workItemIds, commitHash);
+      await SDK.notifyLoadSucceeded();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatus(`Unable to queue pipeline: ${message}`);
+      await SDK.notifyLoadFailed(message);
+    }
   }
+}));
 
-  setStatus(`Queueing for ${workItemIds.length} work items...`);
-  await queuePipeline(workItemIds);
-  await SDK.notifyLoadSucceeded();
-}
-
-main().catch(async (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  setStatus(`Unable to queue pipeline: ${message}`);
-  await SDK.notifyLoadFailed(message);
-});
+SDK.init();
