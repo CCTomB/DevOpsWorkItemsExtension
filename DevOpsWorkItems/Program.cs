@@ -1,74 +1,94 @@
-﻿using Microsoft.TeamFoundation.Core.WebApi;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.WebApi;
-using Microsoft.VisualStudio.Services.WebApi.Patch;
 using Microsoft.VisualStudio.Services.WebApi.Patch.Json;
+using Microsoft.VisualStudio.Services.WebApi.Patch;
 
-// --- Configuration ---
-string organizationUrl = "https://dev.azure.com/cornwallcouncil/";
-string personalAccessToken = "1gYQwdqKWAIp4uPqJ6xbruFStN7Ue7QA8blk0IypgU82QAM28eKXJQQJ99CHACAAAAAxQP9BAAASAZDO3Lp0";
-string projectId = "df2fa711-4f06-46a2-8d30-6b01e5fa8549";
-string repositoryId = "c3298fea-1057-4166-a52d-e55b54529d17";
-string commitHash = "59973bc39dcab4557cb64c47d9947eadfe7f6774";
-int[] workItemIds = { 192440, 192441, 192442, 192443, 192444, 192445, 192446, 192447, 192448, 192450, 192451, 192452, 192453, 192454, 192455, 192456, 192457, 192458, 192459, 192460 }; // Add all your IDs here
-
-// --- Setup Connection ---
-var credentials = new VssBasicCredential(string.Empty, personalAccessToken);
-using var connection = new VssConnection(new Uri(organizationUrl), credentials);
-var workItemClient = connection.GetClient<WorkItemTrackingHttpClient>();
-
-// --- Construct the vstfs URL (plain slashes for creating links) ---
-string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repositoryId}/{commitHash}";
-
-Console.WriteLine($"Linking commit to {workItemIds.Length} work items...");
-
-foreach (int workItemId in workItemIds)
+async Task<int> Main(string[] args)
 {
-    try
+    // Read configuration from environment variables or args
+    string organizationUrl = Environment.GetEnvironmentVariable("ORG_URL") ?? "https://dev.azure.com/yourOrg/";
+    string personalAccessToken = Environment.GetEnvironmentVariable("PERSONAL_ACCESS_TOKEN") ?? "";
+    string projectId = Environment.GetEnvironmentVariable("PROJECT_ID") ?? "df2fa711-4f06-46a2-8d30-6b01e5fa8549";
+    string repositoryId = Environment.GetEnvironmentVariable("REPOSITORY_ID") ?? "c3298fea-1057-4166-a52d-e55b54529d17";
+    string commitHash = Environment.GetEnvironmentVariable("COMMIT_HASH") ?? "";
+    string workItemArg = args.FirstOrDefault(a => a.StartsWith("--workItemId="))?.Split('=')[1]
+                         ?? Environment.GetEnvironmentVariable("WORK_ITEM_ID");
+
+    if (string.IsNullOrWhiteSpace(personalAccessToken))
     {
-        // Fetch existing work item relations
-        var existingItem = await workItemClient.GetWorkItemAsync(workItemId, expand: WorkItemExpand.Relations);
+        Console.Error.WriteLine("PERSONAL_ACCESS_TOKEN not provided (set pipeline secret variable PERSONAL_ACCESS_TOKEN).");
+        return 2;
+    }
 
-        bool relationExists = existingItem.Relations != null &&
-                              existingItem.Relations.Any(r =>
-                                  string.Equals(r.Url, artifactUrl, StringComparison.OrdinalIgnoreCase) ||
-                                  (r.Rel?.Equals("ArtifactLink", StringComparison.OrdinalIgnoreCase) == true &&
-                                   r.Url != null && r.Url.IndexOf(commitHash, StringComparison.OrdinalIgnoreCase) >= 0)
-                              );
+    if (string.IsNullOrWhiteSpace(workItemArg))
+    {
+        Console.Error.WriteLine("No work item id provided (use --workItemId=<id> or WORK_ITEM_ID env var).");
+        return 2;
+    }
 
-        if (relationExists)
+    var workItemIds = workItemArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                 .Select(s => int.Parse(s)).ToArray();
+
+    var credentials = new VssBasicCredential(string.Empty, personalAccessToken);
+    using var connection = new VssConnection(new Uri(organizationUrl), credentials);
+    var workItemClient = connection.GetClient<WorkItemTrackingHttpClient>();
+
+    // vstfs artifact URL
+    string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repositoryId}/{commitHash}";
+
+    Console.WriteLine($"Linking commit {commitHash} to {workItemIds.Length} work items...");
+
+    foreach (int workItemId in workItemIds)
+    {
+        try
         {
-            Console.WriteLine($"→ Work Item {workItemId}: relation already exists, skipping.");
-            continue;
-        }
+            var existingItem = await workItemClient.GetWorkItemAsync(workItemId, expand: WorkItemExpand.Relations);
 
-        // Create the JSON Patch document using the official SDK types
-        var patchDocument = new JsonPatchDocument();
-        patchDocument.Add(new JsonPatchOperation
-        {
-            Operation = Operation.Add,
-            Path = "/relations/-",
-            Value = new
+            bool relationExists = existingItem.Relations != null &&
+                existingItem.Relations.Any(r =>
+                    string.Equals(r.Url, artifactUrl, StringComparison.OrdinalIgnoreCase) ||
+                    (r.Rel?.Equals("ArtifactLink", StringComparison.OrdinalIgnoreCase) == true &&
+                     r.Url != null && !string.IsNullOrEmpty(commitHash) && r.Url.IndexOf(commitHash, StringComparison.OrdinalIgnoreCase) >= 0)
+                );
+
+            if (relationExists)
             {
-                rel = "ArtifactLink",
-                url = artifactUrl,
-                attributes = new
-                {
-                    name = "Fixed in Commit"
-                }
+                Console.WriteLine($"→ Work Item {workItemId}: relation already exists, skipping.");
+                continue;
             }
-        });
 
-        // Update the work item
-        var updatedItem = await workItemClient.UpdateWorkItemAsync(patchDocument, workItemId);
-        Console.WriteLine($"✓ Work Item {workItemId} linked successfully.");
+            var patchDocument = new JsonPatchDocument();
+            patchDocument.Add(new JsonPatchOperation
+            {
+                Operation = Operation.Add,
+                Path = "/relations/-",
+                Value = new
+                {
+                    rel = "ArtifactLink",
+                    url = artifactUrl,
+                    attributes = new
+                    {
+                        name = "Fixed in Commit"
+                    }
+                }
+            });
+
+            var updatedItem = await workItemClient.UpdateWorkItemAsync(patchDocument, workItemId);
+            Console.WriteLine($"✓ Work Item {workItemId} linked successfully.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Work Item {workItemId} failed: {ex.Message}");
+        }
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"✗ Work Item {workItemId} failed: {ex.Message}");
-    }
+
+    Console.WriteLine("Done.");
+    return 0;
 }
 
-Console.WriteLine("Done.");
+return await Main(args);
