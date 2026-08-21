@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "bulk-assign-commit-hash",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "name": "Bulk Assign Commit Hash",
   "publisher": "CornwallCouncil",
   "description": "Queue the commit-linking pipeline for multiple selected Azure DevOps work items.",
@@ -34,6 +34,7 @@
         "text": "Link selected work items to this commit",
         "title": "Queue BulkAssignCommitHashToManyWorkItems",
         "toolbarText": "Link selected work items",
+        "registeredObjectId": "bulk-assign-commit-hash-action",
         "uri": "dist/action.html"
       }
     }
