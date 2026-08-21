@@ -21,8 +21,8 @@ steps:
     version: '10.0.x' # ensure agent has .NET 10 SDK; adjust if needed
 
 - script: |
-    dotnet restore
-    dotnet publish -c $(configuration) -o $(Build.ArtifactStagingDirectory)/publish
+  dotnet restore DevOpsWorkItems/DevOpsWorkItems.csproj
+  dotnet publish DevOpsWorkItems/DevOpsWorkItems.csproj -c $(configuration) -o $(Build.ArtifactStagingDirectory)/publish
   displayName: 'dotnet restore && publish'
 
 - pwsh: |
