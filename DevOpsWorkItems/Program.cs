@@ -46,6 +46,7 @@ internal static class Program
 
         // vstfs artifact URL
         string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repositoryId}/{commitHash}";
+        var failedWorkItems = new List<(int Id, string Message)>();
 
         Console.WriteLine($"Linking commit {commitHash} to {workItemIds.Length} work items...");
 
@@ -89,11 +90,27 @@ internal static class Program
             }
             catch (Exception ex)
             {
+                failedWorkItems.Add((workItemId, ex.Message));
                 Console.WriteLine($"✗ Work Item {workItemId} failed: {ex.Message}");
+                Console.WriteLine($"##vso[task.logissue type=warning]Work Item {workItemId} failed: {ex.Message}");
             }
         }
 
-        Console.WriteLine("Done.");
+        if (failedWorkItems.Count == 0)
+        {
+            Console.WriteLine("Done. All work items were linked or already had the relation.");
+        }
+        else
+        {
+            Console.WriteLine($"Done with {failedWorkItems.Count} failed work item(s):");
+            foreach (var failure in failedWorkItems)
+            {
+                Console.WriteLine($"- Work Item {failure.Id}: {failure.Message}");
+            }
+
+            Console.WriteLine($"##vso[task.complete result=SucceededWithIssues;]Completed with {failedWorkItems.Count} failed work item(s). See the warnings above for details.");
+        }
+
         return 0;
     }
 }
