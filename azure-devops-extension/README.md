@@ -11,7 +11,7 @@ This extension adds **Link selected work items to this commit** to the Azure Boa
 - The pipeline must accept the `commitHash` string parameter.
 - The installing user needs permission to queue the pipeline and the extension requests `vso.build_execute` and `vso.work`.
 
-Configure `PERSONAL_ACCESS_TOKEN` as a secret variable under the pipeline's **Edit > Variables** page, or add it through an authorized variable group. The PAT must be available to the pipeline with Work Item and Code permissions.
+The pipeline uses Azure Pipelines `System.AccessToken` by default. Grant the pipeline build service identity permission to read and edit work items, and permission to read the repository. A `PERSONAL_ACCESS_TOKEN` secret variable remains supported as a fallback for local or restricted pipeline environments.
 
 ## Build
 
