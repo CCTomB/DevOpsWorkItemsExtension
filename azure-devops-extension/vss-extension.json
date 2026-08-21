@@ -1,0 +1,47 @@
+{
+  "manifestVersion": 1,
+  "id": "bulk-assign-commit-hash",
+  "version": "0.1.0",
+  "name": "Bulk Assign Commit Hash",
+  "publisher": "CornwallCouncil",
+  "description": "Queue the commit-linking pipeline for multiple selected Azure DevOps work items.",
+  "public": false,
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "demands": [
+    "api-version/3.0"
+  ],
+  "scopes": [
+    "vso.work",
+    "vso.build_execute"
+  ],
+  "categories": [
+    "Azure Boards",
+    "Azure Pipelines"
+  ],
+  "contributions": [
+    {
+      "id": "bulk-assign-commit-hash-action",
+      "type": "ms.vss-web.action",
+      "description": "Queues the commit-linking pipeline for selected work items.",
+      "targets": [
+        "ms.vss-work-web.work-item-context-menu"
+      ],
+      "properties": {
+        "text": "Link selected work items to this commit",
+        "title": "Queue BulkAssignCommitHashToManyWorkItems",
+        "toolbarText": "Link selected work items",
+        "uri": "dist/action.html"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "dist",
+      "addressable": true
+    }
+  ]
+}
