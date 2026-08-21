@@ -39,7 +39,15 @@ steps:
       $env:COMMIT_HASH = "$(Build.SourceVersion)"
     }
     $oauthToken = $env:SYSTEM_ACCESSTOKEN
+    if ([string]::IsNullOrWhiteSpace($oauthToken)) {
+      $oauthToken = '$(System.AccessToken)'
+      $env:SYSTEM_ACCESSTOKEN = $oauthToken
+    }
     $patToken = $env:PERSONAL_ACCESS_TOKEN
+    if ([string]::IsNullOrWhiteSpace($patToken)) {
+      $patToken = '$(PERSONAL_ACCESS_TOKEN)'
+      $env:PERSONAL_ACCESS_TOKEN = $patToken
+    }
     $hasOAuthToken = -not [string]::IsNullOrWhiteSpace($oauthToken) -and $oauthToken -ne '$(System.AccessToken)'
     $hasPatToken = -not [string]::IsNullOrWhiteSpace($patToken) -and $patToken -ne '$(PERSONAL_ACCESS_TOKEN)'
     $tokenState = if ($hasOAuthToken) { "System.AccessToken present ($($oauthToken.Length) characters)" } elseif ($hasPatToken) { "PAT present ($($patToken.Length) characters)" } else { 'missing' }
