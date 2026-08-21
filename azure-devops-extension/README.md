@@ -1,3 +1,5 @@
+# Author
+Tom barker
 # Bulk Assign Commit Hash Azure DevOps Extension
 
 This extension adds **Link selected work items to this commit** to the Azure Boards work-item context menu. It queues the `BulkAssignCommitHashToManyWorkItems` YAML pipeline with the selected IDs in the existing `workItemId` parameter.
