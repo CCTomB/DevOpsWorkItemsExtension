@@ -1,0 +1,43 @@
+trigger: none
+
+parameters:
+  - name: workItemId
+    type: string
+    default: ''
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  # Create/set this secret variable in the pipeline UI or variable group:
+  # PERSONAL_ACCESS_TOKEN (secret) — PAT with Work Item and Code permissions
+  configuration: 'Release'
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Use .NET SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '10.0.x' # ensure agent has .NET 10 SDK; adjust if needed
+
+- script: |
+  dotnet restore DevOpsWorkItems/DevOpsWorkItems.csproj
+  dotnet publish DevOpsWorkItems/DevOpsWorkItems.csproj -c $(configuration) -o $(Build.ArtifactStagingDirectory)/publish
+  displayName: 'dotnet restore && publish'
+
+- pwsh: |
+    $env:ORG_URL = "$(System.CollectionUri)"
+    # If using full organization url, you can set ORG_URL as: https://dev.azure.com/yourOrg/
+    $env:PROJECT_ID = "$(System.TeamProjectId)"
+    $env:REPOSITORY_ID = "$(Build.Repository.ID)"
+    $env:COMMIT_HASH = "$(Build.SourceVersion)"
+    $env:PERSONAL_ACCESS_TOKEN = "$(PERSONAL_ACCESS_TOKEN)"
+    if ('${{ parameters.workItemId }}' -ne '') {
+      $env:WORK_ITEM_ID = '${{ parameters.workItemId }}'
+    } elseif ('$(workItemId)' -ne '') {
+      $env:WORK_ITEM_ID = '$(workItemId)'
+    }
+
+    Write-Host "Running tool for work item: $env:WORK_ITEM_ID"
+    dotnet "$(Build.ArtifactStagingDirectory)/publish/DevOpsWorkItems.dll" --workItemId=$env:WORK_ITEM_ID
+  displayName: 'Run linking app'

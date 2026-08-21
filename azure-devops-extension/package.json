@@ -1,0 +1,25 @@
+{
+  "name": "bulk-assign-commit-hash-devops-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Queue the BulkAssignCommitHashToManyWorkItems pipeline for selected Azure DevOps work items.",
+  "scripts": {
+    "build": "webpack --mode production",
+    "build:watch": "webpack --mode development --watch",
+    "package": "npm run build && tfx extension create --manifest-globs vss-extension.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "azure-devops-extension-api": "^4.6.0",
+    "azure-devops-extension-sdk": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "copy-webpack-plugin": "^14.0.0",
+    "ts-loader": "^9.5.2",
+    "tfx-cli": "^0.24.0",
+    "typescript": "^5.7.2",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  }
+}
