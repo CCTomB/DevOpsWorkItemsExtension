@@ -38,7 +38,9 @@ steps:
     } else {
       $env:COMMIT_HASH = "$(Build.SourceVersion)"
     }
-    $env:PERSONAL_ACCESS_TOKEN = "$(PERSONAL_ACCESS_TOKEN)"
+    if ([string]::IsNullOrWhiteSpace($env:PERSONAL_ACCESS_TOKEN) -or $env:PERSONAL_ACCESS_TOKEN -eq '$(PERSONAL_ACCESS_TOKEN)') {
+      throw 'PERSONAL_ACCESS_TOKEN is not configured. Add it as a secret variable on this pipeline or in its variable group.'
+    }
     if ('${{ parameters.workItemId }}' -ne '') {
       $env:WORK_ITEM_ID = '${{ parameters.workItemId }}'
     } elseif ('$(workItemId)' -ne '') {
@@ -47,4 +49,6 @@ steps:
 
     Write-Host "Running tool for work item: $env:WORK_ITEM_ID"
     dotnet "$(Build.ArtifactStagingDirectory)/publish/DevOpsWorkItems.dll" --workItemId=$env:WORK_ITEM_ID
+  env:
+    PERSONAL_ACCESS_TOKEN: $(PERSONAL_ACCESS_TOKEN)
   displayName: 'Run linking app'
