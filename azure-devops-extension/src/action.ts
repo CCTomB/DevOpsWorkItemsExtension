@@ -1,14 +1,82 @@
 import * as SDK from 'azure-devops-extension-sdk';
-import { Build, BuildRestClient } from 'azure-devops-extension-api/Build';
-import { getClient } from 'azure-devops-extension-api';
+import { CommonServiceIds, IHostPageLayoutService } from 'azure-devops-extension-api/Common/CommonServices';
 
 const pipelineName = 'BulkAssignCommitHashToManyWorkItems';
 const statusElement = document.getElementById('status');
+const pipelineRequestTimeoutMs = 30000;
 
 function setStatus(message: string): void {
   if (statusElement) {
     statusElement.textContent = message;
   }
+}
+
+async function showMessage(message: string): Promise<void> {
+  const layoutService = await SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService);
+  layoutService.openMessageDialog(message, { title: 'Bulk Assign Commit Hash' });
+}
+
+async function reportFailure(message: string): Promise<void> {
+  console.error('Bulk Assign Commit Hash action failed:', message);
+  setStatus(`Unable to queue pipeline: ${message}`);
+
+  try {
+    await showMessage(`Unable to queue pipeline:\n\n${message}`);
+  } catch (dialogError: unknown) {
+    console.error('Bulk Assign Commit Hash could not open the Azure DevOps message dialog:', dialogError);
+  }
+}
+
+async function withTimeout<T>(operation: Promise<T>, description: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(`${description} did not respond within 30 seconds.`)), pipelineRequestTimeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
+async function getAzureDevOpsJson<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const accessToken = await withTimeout(SDK.getAccessToken(), 'Azure DevOps access-token request');
+  const response = await withTimeout(fetch(url, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  }), 'Azure DevOps REST request');
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    throw new Error(`Azure DevOps REST request failed (${response.status} ${response.statusText}): ${responseText || 'no response body'}`);
+  }
+
+  return JSON.parse(responseText) as T;
+}
+
+function getAzureDevOpsBaseUri(): string {
+  const referrer = document.referrer;
+  if (!referrer) {
+    throw new Error('Azure DevOps host URL was not provided to the extension.');
+  }
+
+  const referrerUrl = new URL(referrer);
+  const host = SDK.getHost();
+
+  if (referrerUrl.hostname === 'dev.azure.com') {
+    const organization = referrerUrl.pathname.split('/').filter(Boolean)[0] ?? host.name;
+    return `${referrerUrl.origin}/${encodeURIComponent(organization)}`;
+  }
+
+  return referrerUrl.origin;
 }
 
 function collectIds(value: unknown): number[] {
@@ -49,7 +117,10 @@ function getSelectedWorkItemIds(actionContext: unknown): number[] {
     configuration
   ];
 
-  return [...new Set(candidates.flatMap(collectIds))];
+  const workItemIds = [...new Set(candidates.flatMap(collectIds))];
+  console.info('Bulk Assign Commit Hash action context', actionContext);
+  console.info('Bulk Assign Commit Hash selected work item IDs', workItemIds);
+  return workItemIds;
 }
 
 function getCommitHash(): string {
@@ -72,24 +143,40 @@ async function queuePipeline(workItemIds: number[], commitHash: string): Promise
     throw new Error('The current Azure DevOps project could not be determined.');
   }
 
-  const buildClient = getClient(BuildRestClient);
-  const definitions = await buildClient.getDefinitions(projectId, pipelineName);
-  const definition = definitions.find((candidate) => candidate.name === pipelineName) ?? definitions[0];
+  console.info('Bulk Assign Commit Hash queue request', { projectId, pipelineName, workItemIds, commitHash });
+  const hostUri = getAzureDevOpsBaseUri().replace(/\/$/, '');
+  const pipelinesUrl = `${hostUri}/${encodeURIComponent(projectId)}/_apis/pipelines?api-version=7.1-preview.1`;
+  console.info('Bulk Assign Commit Hash listing pipelines', pipelinesUrl);
+  const pipelineResponse = await getAzureDevOpsJson<{ value: Array<{ id?: number; name?: string }> }>(pipelinesUrl);
+  const pipelines = pipelineResponse.value ?? [];
+  console.info('Bulk Assign Commit Hash pipeline listing completed', { count: pipelines.length });
+  const pipeline = pipelines.find((candidate) => candidate.name === pipelineName);
+  console.info('Bulk Assign Commit Hash pipelines found', pipelines.map((candidate) => ({ id: candidate.id, name: candidate.name })));
 
-  if (!definition?.id) {
+  if (!pipeline?.id) {
     throw new Error(`Pipeline '${pipelineName}' was not found in the current project.`);
   }
 
-  const queuedBuild = await buildClient.queueBuild({
-    definition,
-    templateParameters: {
-      workItemId: workItemIds.join(','),
-      commitHash
-    }
-  } as unknown as Build, projectId, undefined, undefined, undefined, definition.id);
+  console.info('Bulk Assign Commit Hash found pipeline', { id: pipeline.id, name: pipeline.name });
+  const runUrl = `${hostUri}/${encodeURIComponent(projectId)}/_apis/pipelines/${pipeline.id}/runs?api-version=7.1-preview.1`;
+  const queuedRun = await getAzureDevOpsJson<{ id?: number }>(runUrl, {
+    method: 'POST',
+    body: JSON.stringify({
+      resources: {
+        repositories: {}
+      },
+      templateParameters: {
+        workItemId: workItemIds.join(','),
+        commitHash
+      },
+      variables: {}
+    })
+  });
+  console.info('Bulk Assign Commit Hash pipeline run created', queuedRun);
 
-  const buildNumber = queuedBuild.buildNumber ?? String(queuedBuild.id ?? '');
-  setStatus(`Queued ${pipelineName} for ${workItemIds.length} work items${buildNumber ? ` (run ${buildNumber})` : ''}.`);
+  const runId = queuedRun.id ? ` (run ${queuedRun.id})` : '';
+  setStatus(`Queued ${pipelineName} for ${workItemIds.length} work items${runId}.`);
+  await showMessage(`Pipeline queued successfully${runId}.`);
 }
 
 SDK.register('bulk-assign-commit-hash-action', () => ({
@@ -106,7 +193,7 @@ SDK.register('bulk-assign-commit-hash-action', () => ({
       await SDK.notifyLoadSucceeded();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      setStatus(`Unable to queue pipeline: ${message}`);
+      await reportFailure(message);
       await SDK.notifyLoadFailed(message);
     }
   }
