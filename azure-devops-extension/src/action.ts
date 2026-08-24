@@ -136,14 +136,23 @@ function getCommitHash(): string {
   return commitHash;
 }
 
-async function queuePipeline(workItemIds: number[], commitHash: string): Promise<void> {
+function getRepositoryName(): string {
+  const repositoryName = window.prompt('Enter the Azure Repos repository name containing the commit:')?.trim();
+  if (!repositoryName) {
+    throw new Error('Repository name entry was cancelled.');
+  }
+
+  return repositoryName;
+}
+
+async function queuePipeline(workItemIds: number[], commitHash: string, repositoryName: string): Promise<void> {
   const webContext = SDK.getWebContext();
   const projectId = webContext.project?.id;
   if (!projectId) {
     throw new Error('The current Azure DevOps project could not be determined.');
   }
 
-  console.info('Bulk Assign Commit Hash queue request', { projectId, pipelineName, workItemIds, commitHash });
+  console.info('Bulk Assign Commit Hash queue request', { projectId, pipelineName, workItemIds, commitHash, repositoryName });
   const hostUri = getAzureDevOpsBaseUri().replace(/\/$/, '');
   const pipelinesUrl = `${hostUri}/${encodeURIComponent(projectId)}/_apis/pipelines?api-version=7.1-preview.1`;
   console.info('Bulk Assign Commit Hash listing pipelines', pipelinesUrl);
@@ -167,7 +176,8 @@ async function queuePipeline(workItemIds: number[], commitHash: string): Promise
       },
       templateParameters: {
         workItemId: workItemIds.join(','),
-        commitHash
+        commitHash,
+        repositoryName
       },
       variables: {}
     })
@@ -188,8 +198,9 @@ SDK.register('bulk-assign-commit-hash-action', () => ({
       }
 
       const commitHash = getCommitHash();
+      const repositoryName = getRepositoryName();
       setStatus(`Queueing for ${workItemIds.length} work items...`);
-      await queuePipeline(workItemIds, commitHash);
+      await queuePipeline(workItemIds, commitHash, repositoryName);
       await SDK.notifyLoadSucceeded();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
