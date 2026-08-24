@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
+using Microsoft.TeamFoundation.SourceControl.WebApi;
 using Microsoft.VisualStudio.Services.Common;
 using Microsoft.VisualStudio.Services.OAuth;
 using Microsoft.VisualStudio.Services.WebApi;
@@ -18,7 +19,7 @@ internal static class Program
         string personalAccessToken = Environment.GetEnvironmentVariable("PERSONAL_ACCESS_TOKEN") ?? "";
         string systemAccessToken = Environment.GetEnvironmentVariable("SYSTEM_ACCESSTOKEN") ?? "";
         string projectId = Environment.GetEnvironmentVariable("PROJECT_ID") ?? "df2fa711-4f06-46a2-8d30-6b01e5fa8549";
-        string repositoryId = Environment.GetEnvironmentVariable("REPOSITORY_ID") ?? "c3298fea-1057-4166-a52d-e55b54529d17";
+        string repositoryName = Environment.GetEnvironmentVariable("REPOSITORY_NAME") ?? "";
         string commitHash = Environment.GetEnvironmentVariable("COMMIT_HASH") ?? "";
         string workItemArg = args.FirstOrDefault(a => a.StartsWith("--workItemId="))?.Split('=')[1]
                              ?? Environment.GetEnvironmentVariable("WORK_ITEM_ID");
@@ -44,8 +45,24 @@ internal static class Program
         using var connection = new VssConnection(new Uri(organizationUrl), credentials);
         var workItemClient = connection.GetClient<WorkItemTrackingHttpClient>();
 
+        if (string.IsNullOrWhiteSpace(repositoryName))
+        {
+            Console.Error.WriteLine("No repository name provided (set REPOSITORY_NAME).");
+            return 2;
+        }
+
+        var gitClient = connection.GetClient<GitHttpClient>();
+        var repository = await gitClient.GetRepositoryAsync(repositoryName, projectId);
+        if (repository.Id == Guid.Empty)
+        {
+            Console.Error.WriteLine($"Repository '{repositoryName}' could not be resolved.");
+            return 2;
+        }
+
+        Console.WriteLine($"Resolved repository '{repository.Name}' ({repository.Id}) in project {projectId}.");
+
         // vstfs artifact URL
-        string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repositoryId}/{commitHash}";
+        string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repository.Id}/{commitHash}";
         var failedWorkItems = new List<(int Id, string Message)>();
 
         Console.WriteLine($"Linking commit {commitHash} to {workItemIds.Length} work items...");

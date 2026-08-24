@@ -9,6 +9,7 @@ This extension adds **Link selected work items to this commit** to the Azure Boa
 - The YAML pipeline in the repository must be created and named `BulkAssignCommitHashToManyWorkItems`.
 - The pipeline must accept the existing `workItemId` string parameter.
 - The pipeline must accept the `commitHash` string parameter.
+- The pipeline accepts an optional `repositoryName` parameter. Leave it blank to use the pipeline's checkout repository, or enter the Azure Repos repository name explicitly.
 - The installing user needs permission to queue the pipeline and the extension requests `vso.build_execute` and `vso.work`.
 
 The pipeline uses Azure Pipelines `System.AccessToken` by default. Grant the pipeline build service identity permission to read and edit work items, and permission to read the repository. A `PERSONAL_ACCESS_TOKEN` secret variable remains supported as a fallback for local or restricted pipeline environments.
