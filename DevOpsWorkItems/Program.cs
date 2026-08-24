@@ -52,7 +52,7 @@ internal static class Program
         }
 
         var gitClient = connection.GetClient<GitHttpClient>();
-        var repository = await gitClient.GetRepositoryAsync(repositoryName, projectId);
+        var repository = await gitClient.GetRepositoryAsync(projectId, repositoryName);
         if (repository.Id == Guid.Empty)
         {
             Console.Error.WriteLine($"Repository '{repositoryName}' could not be resolved.");
