@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.TeamFoundation.Core.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
 using Microsoft.TeamFoundation.SourceControl.WebApi;
@@ -64,6 +65,27 @@ internal static class Program
 
         Console.WriteLine($"Repository lookup input: project '{repositoryProjectName}', repository '{repositoryName}'.");
 
+        var projectClient = connection.GetClient<ProjectHttpClient>();
+        TeamProject repositoryProject;
+        try
+        {
+            repositoryProject = await projectClient.GetProject(repositoryProjectName);
+        }
+        catch (VssServiceException ex)
+        {
+            Console.Error.WriteLine($"Repository project '{repositoryProjectName}' could not be resolved: {ex.Message}");
+            return 2;
+        }
+
+        if (repositoryProject.Id == Guid.Empty)
+        {
+            Console.Error.WriteLine($"Repository project '{repositoryProjectName}' returned no valid project ID.");
+            return 2;
+        }
+
+        string repositoryProjectId = repositoryProject.Id.ToString();
+        Console.WriteLine($"Resolved repository project '{repositoryProject.Name}' ({repositoryProjectId}).");
+
         var gitClient = connection.GetClient<GitHttpClient>();
         GitRepository? repository = null;
         if (Guid.TryParse(repositoryId, out var parsedRepositoryId))
@@ -81,14 +103,14 @@ internal static class Program
         {
             try
             {
-                repository = await gitClient.GetRepositoryAsync(repositoryProjectName, repositoryName);
+                repository = await gitClient.GetRepositoryAsync(repositoryProjectId, repositoryName);
             }
             catch (VssServiceException)
             {
             }
         }
 
-        repository ??= (await gitClient.GetRepositoriesAsync(repositoryProjectName))
+        repository ??= (await gitClient.GetRepositoriesAsync(repositoryProjectId))
             .FirstOrDefault(r => string.Equals(r.Name, repositoryName, StringComparison.OrdinalIgnoreCase));
 
         if (repository is null || repository.Id == Guid.Empty)
@@ -102,7 +124,7 @@ internal static class Program
         GitCommit commit;
         try
         {
-            commit = await gitClient.GetCommitAsync(repositoryProjectName, commitHash, repository.Id.ToString());
+            commit = await gitClient.GetCommitAsync(repositoryProjectId, commitHash, repository.Id.ToString());
         }
         catch (VssServiceException ex)
         {
@@ -119,7 +141,7 @@ internal static class Program
         commitHash = commit.CommitId;
         Console.WriteLine($"Verified commit '{commitHash}' in repository '{repository.Name}'.");
 
-        string artifactUrl = $"vstfs:///Git/Commit/{repositoryProjectName}/{repository.Id}/{commitHash}";
+        string artifactUrl = $"vstfs:///Git/Commit/{repositoryProjectId}/{repository.Id}/{commitHash}";
         var failedWorkItems = new List<(int Id, string Message)>();
 
         Console.WriteLine($"Linking commit {commitHash} to {workItemIds.Length} work items...");
