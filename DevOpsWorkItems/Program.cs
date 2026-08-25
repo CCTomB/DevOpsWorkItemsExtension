@@ -88,6 +88,26 @@ internal static class Program
 
         Console.WriteLine($"Resolved repository '{repository.Name}' ({repository.Id}) in project {projectId}.");
 
+        GitCommit commit;
+        try
+        {
+            commit = await gitClient.GetCommitAsync(commitHash, repository.Id.ToString(), projectId);
+        }
+        catch (VssServiceException ex)
+        {
+            Console.Error.WriteLine($"Commit '{commitHash}' could not be found in repository '{repository.Name}' ({repository.Id}) and project {projectId}: {ex.Message}");
+            return 2;
+        }
+
+        if (string.IsNullOrWhiteSpace(commit.CommitId))
+        {
+            Console.Error.WriteLine($"Azure DevOps returned no canonical ID for commit '{commitHash}'.");
+            return 2;
+        }
+
+        commitHash = commit.CommitId;
+        Console.WriteLine($"Verified commit '{commitHash}' in repository '{repository.Name}'.");
+
         string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repository.Id}/{commitHash}";
         var failedWorkItems = new List<(int Id, string Message)>();
 
@@ -144,7 +164,17 @@ internal static class Program
                 Console.WriteLine($"JSON patch payload: {patchPayload}");
 
                 await workItemClient.UpdateWorkItemAsync(patchDocument, workItemId);
-                Console.WriteLine($"✓ Work Item {workItemId} linked successfully.");
+                var savedItem = await workItemClient.GetWorkItemAsync(workItemId, expand: WorkItemExpand.Relations);
+                var savedRelation = savedItem.Relations?.FirstOrDefault(r =>
+                    r.Rel?.Equals("ArtifactLink", StringComparison.OrdinalIgnoreCase) == true &&
+                    string.Equals(r.Url, artifactUrl, StringComparison.OrdinalIgnoreCase));
+                if (savedRelation is null)
+                {
+                    throw new InvalidOperationException($"PATCH succeeded, but Azure DevOps did not return the expected ArtifactLink URL. Stored ArtifactLink URLs: {string.Join(" | ", savedItem.Relations?.Where(r => r.Rel?.Equals("ArtifactLink", StringComparison.OrdinalIgnoreCase) == true).Select(r => r.Url) ?? Enumerable.Empty<string>())}");
+                }
+
+                Console.WriteLine($"Saved ArtifactLink URL: {savedRelation.Url}");
+                Console.WriteLine($"✓ Work Item {workItemId} linked and verified successfully.");
             }
             catch (Exception ex)
             {
