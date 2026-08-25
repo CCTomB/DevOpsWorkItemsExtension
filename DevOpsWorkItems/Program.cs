@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi;
 using Microsoft.TeamFoundation.WorkItemTracking.WebApi.Models;
@@ -87,7 +88,6 @@ internal static class Program
 
         Console.WriteLine($"Resolved repository '{repository.Name}' ({repository.Id}) in project {projectId}.");
 
-        // vstfs artifact URL
         string artifactUrl = $"vstfs:///Git/Commit/{projectId}/{repository.Id}/{commitHash}";
         var failedWorkItems = new List<(int Id, string Message)>();
 
@@ -112,21 +112,36 @@ internal static class Program
                     continue;
                 }
 
+                var relation = new
+                {
+                    rel = "ArtifactLink",
+                    url = artifactUrl,
+                    attributes = new
+                    {
+                        name = "Fixed in Commit"
+                    }
+                };
                 var patchDocument = new JsonPatchDocument();
                 patchDocument.Add(new JsonPatchOperation
                 {
                     Operation = Operation.Add,
                     Path = "/relations/-",
-                    Value = new
+                    Value = relation
+                });
+
+                string workItemEndpoint = $"PATCH {organizationUrl.TrimEnd('/')}/_apis/wit/workitems/{workItemId}?api-version=7.1";
+                string patchPayload = JsonSerializer.Serialize(new[]
+                {
+                    new
                     {
-                        rel = "ArtifactLink",
-                        url = artifactUrl,
-                        attributes = new
-                        {
-                            name = "Fixed in Commit"
-                        }
+                        op = "add",
+                        path = "/relations/-",
+                        value = relation
                     }
                 });
+                Console.WriteLine($"Link request: {workItemEndpoint}");
+                Console.WriteLine($"Artifact URL: {artifactUrl}");
+                Console.WriteLine($"JSON patch payload: {patchPayload}");
 
                 await workItemClient.UpdateWorkItemAsync(patchDocument, workItemId);
                 Console.WriteLine($"✓ Work Item {workItemId} linked successfully.");
