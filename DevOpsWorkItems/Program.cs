@@ -19,6 +19,7 @@ internal static class Program
         string personalAccessToken = Environment.GetEnvironmentVariable("PERSONAL_ACCESS_TOKEN") ?? "";
         string systemAccessToken = Environment.GetEnvironmentVariable("SYSTEM_ACCESSTOKEN") ?? "";
         string projectId = Environment.GetEnvironmentVariable("PROJECT_ID") ?? "df2fa711-4f06-46a2-8d30-6b01e5fa8549";
+        string repositoryId = Environment.GetEnvironmentVariable("REPOSITORY_ID") ?? "";
         string repositoryName = Environment.GetEnvironmentVariable("REPOSITORY_NAME") ?? "";
         string commitHash = Environment.GetEnvironmentVariable("COMMIT_HASH") ?? "";
         string workItemArg = args.FirstOrDefault(a => a.StartsWith("--workItemId="))?.Split('=')[1]
@@ -53,12 +54,26 @@ internal static class Program
 
         var gitClient = connection.GetClient<GitHttpClient>();
         GitRepository? repository = null;
-        try
+        if (Guid.TryParse(repositoryId, out var parsedRepositoryId))
         {
-            repository = await gitClient.GetRepositoryAsync(projectId, repositoryName);
+            try
+            {
+                repository = await gitClient.GetRepositoryAsync(parsedRepositoryId);
+            }
+            catch (VssServiceException)
+            {
+            }
         }
-        catch (VssServiceException)
+
+        if (repository is null)
         {
+            try
+            {
+                repository = await gitClient.GetRepositoryAsync(projectId, repositoryName);
+            }
+            catch (VssServiceException)
+            {
+            }
         }
 
         repository ??= (await gitClient.GetRepositoriesAsync(projectId))

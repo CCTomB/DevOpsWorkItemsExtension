@@ -36,6 +36,7 @@ steps:
     $env:ORG_URL = "$(System.CollectionUri)"
     # If using full organization url, you can set ORG_URL as: https://dev.azure.com/yourOrg/
     $env:PROJECT_ID = "$(System.TeamProjectId)"
+    $env:REPOSITORY_ID = "$(Build.Repository.ID)"
     if ('${{ parameters.repositoryName }}' -ne '') {
       $env:REPOSITORY_NAME = '${{ parameters.repositoryName }}'
     } else {
