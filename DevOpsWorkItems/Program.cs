@@ -91,7 +91,7 @@ internal static class Program
         GitCommit commit;
         try
         {
-            commit = await gitClient.GetCommitAsync(commitHash, repository.Id.ToString(), projectId);
+            commit = await gitClient.GetCommitAsync(projectId, commitHash, repository.Id.ToString());
         }
         catch (VssServiceException ex)
         {
