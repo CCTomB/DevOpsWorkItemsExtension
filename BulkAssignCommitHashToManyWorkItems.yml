@@ -41,6 +41,11 @@ steps:
     # If using full organization url, you can set ORG_URL as: https://dev.azure.com/yourOrg/
     $env:PROJECT_ID = "$(System.TeamProjectId)"
     $env:REPOSITORY_PROJECT_NAME = '${{ parameters.repositoryProjectName }}'
+    Write-Host "Task/pipeline project ID: $env:PROJECT_ID"
+    Write-Host "Repository project input: '$env:REPOSITORY_PROJECT_NAME'"
+    if ([string]::IsNullOrWhiteSpace($env:REPOSITORY_PROJECT_NAME)) {
+      throw 'repositoryProjectName was not supplied to the pipeline. Queue the updated extension and enter the project name or GUID containing the repository.'
+    }
     if ('${{ parameters.repositoryName }}' -ne '') {
       $env:REPOSITORY_NAME = '${{ parameters.repositoryName }}'
     } else {
@@ -55,7 +60,7 @@ steps:
     $patToken = $env:PERSONAL_ACCESS_TOKEN
     $hasOAuthToken = -not [string]::IsNullOrWhiteSpace($oauthToken)
     $hasPatToken = -not [string]::IsNullOrWhiteSpace($patToken)
-    $tokenState = if ($hasOAuthToken) { "System.AccessToken present ($($oauthToken.Length) characters)" } elseif ($hasPatToken) { "PAT present ($($patToken.Length) characters)" } else { 'missing' }
+    $tokenState = if ($hasPatToken) { "PAT present ($($patToken.Length) characters); selected over System.AccessToken" } elseif ($hasOAuthToken) { "System.AccessToken present ($($oauthToken.Length) characters)" } else { 'missing' }
     Write-Host "Azure DevOps token state: $tokenState"
     if ($tokenState -eq 'missing') {
       throw 'No Azure DevOps token is available. Enable OAuth access for the pipeline job or configure PERSONAL_ACCESS_TOKEN as a secret variable.'

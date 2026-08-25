@@ -20,7 +20,7 @@ internal static class Program
         string personalAccessToken = Environment.GetEnvironmentVariable("PERSONAL_ACCESS_TOKEN") ?? "";
         string systemAccessToken = Environment.GetEnvironmentVariable("SYSTEM_ACCESSTOKEN") ?? "";
         string projectId = Environment.GetEnvironmentVariable("PROJECT_ID") ?? "df2fa711-4f06-46a2-8d30-6b01e5fa8549";
-        string repositoryProjectName = Environment.GetEnvironmentVariable("REPOSITORY_PROJECT_NAME") ?? projectId;
+        string repositoryProjectName = Environment.GetEnvironmentVariable("REPOSITORY_PROJECT_NAME") ?? "";
         string repositoryId = Environment.GetEnvironmentVariable("REPOSITORY_ID") ?? "";
         string repositoryName = Environment.GetEnvironmentVariable("REPOSITORY_NAME") ?? "";
         string commitHash = Environment.GetEnvironmentVariable("COMMIT_HASH") ?? "";
@@ -42,9 +42,11 @@ internal static class Program
         var workItemIds = workItemArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                                      .Select(s => int.Parse(s)).ToArray();
 
-        VssCredentials credentials = !string.IsNullOrWhiteSpace(systemAccessToken)
-            ? new VssOAuthAccessTokenCredential(systemAccessToken)
-            : new VssBasicCredential(string.Empty, personalAccessToken);
+        bool usePersonalAccessToken = !string.IsNullOrWhiteSpace(personalAccessToken);
+        VssCredentials credentials = usePersonalAccessToken
+            ? new VssBasicCredential(string.Empty, personalAccessToken)
+            : new VssOAuthAccessTokenCredential(systemAccessToken);
+        Console.WriteLine($"Azure DevOps credential selected: {(usePersonalAccessToken ? "PAT" : "System.AccessToken")}");
         using var connection = new VssConnection(new Uri(organizationUrl), credentials);
         var workItemClient = connection.GetClient<WorkItemTrackingHttpClient>();
 
@@ -53,6 +55,14 @@ internal static class Program
             Console.Error.WriteLine("No repository name provided (set REPOSITORY_NAME).");
             return 2;
         }
+
+        if (string.IsNullOrWhiteSpace(repositoryProjectName))
+        {
+            Console.Error.WriteLine("No repository project provided (set REPOSITORY_PROJECT_NAME to the project name or GUID containing the repository).");
+            return 2;
+        }
+
+        Console.WriteLine($"Repository lookup input: project '{repositoryProjectName}', repository '{repositoryName}'.");
 
         var gitClient = connection.GetClient<GitHttpClient>();
         GitRepository? repository = null;

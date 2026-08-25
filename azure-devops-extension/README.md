@@ -12,7 +12,7 @@ This extension adds **Link selected work items to this commit** to the Azure Boa
 - The pipeline accepts `repositoryName` and `repositoryProjectName` parameters. Enter the Azure Repos repository name and the project name containing that repository; this project can differ from the project containing the selected work items and pipeline.
 - The installing user needs permission to queue the pipeline and the extension requests `vso.build_execute` and `vso.work`.
 
-The pipeline uses Azure Pipelines `System.AccessToken` by default. Grant the pipeline build service identity permission to read and edit work items, and permission to read the repository. A `PERSONAL_ACCESS_TOKEN` secret variable remains supported as a fallback for local or restricted pipeline environments.
+The pipeline uses the `PERSONAL_ACCESS_TOKEN` secret variable when it is configured, which supports cross-project repository access. If no PAT is configured, it uses Azure Pipelines `System.AccessToken`; grant that pipeline build service identity permission to read and edit work items and read the repository.
 
 ## Build
 
