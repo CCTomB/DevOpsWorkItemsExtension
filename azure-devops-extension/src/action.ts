@@ -145,27 +145,23 @@ function getRepositoryName(): string {
   return repositoryName;
 }
 
-function getRepositoryProjectId(): string {
-  const repositoryProjectId = window.prompt('Enter the Azure DevOps project ID containing the repository:')?.trim();
-  if (!repositoryProjectId) {
-    throw new Error('Repository project ID entry was cancelled.');
+function getRepositoryProjectName(): string {
+  const repositoryProjectName = window.prompt('Enter the Azure DevOps project name containing the repository:')?.trim();
+  if (!repositoryProjectName) {
+    throw new Error('Repository project name entry was cancelled.');
   }
 
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(repositoryProjectId)) {
-    throw new Error('Enter a valid Azure DevOps project ID.');
-  }
-
-  return repositoryProjectId;
+  return repositoryProjectName;
 }
 
-async function queuePipeline(workItemIds: number[], commitHash: string, repositoryName: string, repositoryProjectId: string): Promise<void> {
+async function queuePipeline(workItemIds: number[], commitHash: string, repositoryName: string, repositoryProjectName: string): Promise<void> {
   const webContext = SDK.getWebContext();
   const projectId = webContext.project?.id;
   if (!projectId) {
     throw new Error('The current Azure DevOps project could not be determined.');
   }
 
-  console.info('Bulk Assign Commit Hash queue request', { projectId, pipelineName, workItemIds, commitHash, repositoryName, repositoryProjectId });
+  console.info('Bulk Assign Commit Hash queue request', { projectId, pipelineName, workItemIds, commitHash, repositoryName, repositoryProjectName });
   const hostUri = getAzureDevOpsBaseUri().replace(/\/$/, '');
   const pipelinesUrl = `${hostUri}/${encodeURIComponent(projectId)}/_apis/pipelines?api-version=7.1-preview.1`;
   console.info('Bulk Assign Commit Hash listing pipelines', pipelinesUrl);
@@ -191,7 +187,7 @@ async function queuePipeline(workItemIds: number[], commitHash: string, reposito
         workItemId: workItemIds.join(','),
         commitHash,
         repositoryName,
-        repositoryProjectId
+        repositoryProjectName
       },
       variables: {}
     })
@@ -213,9 +209,9 @@ SDK.register('bulk-assign-commit-hash-action', () => ({
 
       const commitHash = getCommitHash();
       const repositoryName = getRepositoryName();
-      const repositoryProjectId = getRepositoryProjectId();
+      const repositoryProjectName = getRepositoryProjectName();
       setStatus(`Queueing for ${workItemIds.length} work items...`);
-      await queuePipeline(workItemIds, commitHash, repositoryName, repositoryProjectId);
+      await queuePipeline(workItemIds, commitHash, repositoryName, repositoryProjectName);
       await SDK.notifyLoadSucceeded();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);

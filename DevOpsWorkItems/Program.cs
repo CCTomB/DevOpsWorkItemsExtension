@@ -20,7 +20,7 @@ internal static class Program
         string personalAccessToken = Environment.GetEnvironmentVariable("PERSONAL_ACCESS_TOKEN") ?? "";
         string systemAccessToken = Environment.GetEnvironmentVariable("SYSTEM_ACCESSTOKEN") ?? "";
         string projectId = Environment.GetEnvironmentVariable("PROJECT_ID") ?? "df2fa711-4f06-46a2-8d30-6b01e5fa8549";
-        string repositoryProjectId = Environment.GetEnvironmentVariable("REPOSITORY_PROJECT_ID") ?? projectId;
+        string repositoryProjectName = Environment.GetEnvironmentVariable("REPOSITORY_PROJECT_NAME") ?? projectId;
         string repositoryId = Environment.GetEnvironmentVariable("REPOSITORY_ID") ?? "";
         string repositoryName = Environment.GetEnvironmentVariable("REPOSITORY_NAME") ?? "";
         string commitHash = Environment.GetEnvironmentVariable("COMMIT_HASH") ?? "";
@@ -71,14 +71,14 @@ internal static class Program
         {
             try
             {
-                repository = await gitClient.GetRepositoryAsync(repositoryProjectId, repositoryName);
+                repository = await gitClient.GetRepositoryAsync(repositoryProjectName, repositoryName);
             }
             catch (VssServiceException)
             {
             }
         }
 
-        repository ??= (await gitClient.GetRepositoriesAsync(repositoryProjectId))
+        repository ??= (await gitClient.GetRepositoriesAsync(repositoryProjectName))
             .FirstOrDefault(r => string.Equals(r.Name, repositoryName, StringComparison.OrdinalIgnoreCase));
 
         if (repository is null || repository.Id == Guid.Empty)
@@ -87,16 +87,16 @@ internal static class Program
             return 2;
         }
 
-        Console.WriteLine($"Resolved repository '{repository.Name}' ({repository.Id}) in repository project {repositoryProjectId}; tasks and pipeline project is {projectId}.");
+        Console.WriteLine($"Resolved repository '{repository.Name}' ({repository.Id}) in repository project '{repositoryProjectName}'; tasks and pipeline project is {projectId}.");
 
         GitCommit commit;
         try
         {
-            commit = await gitClient.GetCommitAsync(repositoryProjectId, commitHash, repository.Id.ToString());
+            commit = await gitClient.GetCommitAsync(repositoryProjectName, commitHash, repository.Id.ToString());
         }
         catch (VssServiceException ex)
         {
-            Console.Error.WriteLine($"Commit '{commitHash}' could not be found in repository '{repository.Name}' ({repository.Id}) and repository project {repositoryProjectId}: {ex.Message}");
+            Console.Error.WriteLine($"Commit '{commitHash}' could not be found in repository '{repository.Name}' ({repository.Id}) and repository project '{repositoryProjectName}': {ex.Message}");
             return 2;
         }
 
@@ -109,7 +109,7 @@ internal static class Program
         commitHash = commit.CommitId;
         Console.WriteLine($"Verified commit '{commitHash}' in repository '{repository.Name}'.");
 
-        string artifactUrl = $"vstfs:///Git/Commit/{repositoryProjectId}/{repository.Id}/{commitHash}";
+        string artifactUrl = $"vstfs:///Git/Commit/{repositoryProjectName}/{repository.Id}/{commitHash}";
         var failedWorkItems = new List<(int Id, string Message)>();
 
         Console.WriteLine($"Linking commit {commitHash} to {workItemIds.Length} work items...");
