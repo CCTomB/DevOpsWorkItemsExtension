@@ -130,55 +130,15 @@ interface LinkDetails {
 }
 
 function getLinkDetails(): Promise<LinkDetails> {
-  const dialog = document.getElementById('link-dialog');
-  const form = document.getElementById('link-form');
-  const cancelButton = document.getElementById('cancel-link');
-  const commitHashInput = document.getElementById('commit-hash') as HTMLInputElement | null;
-  const repositoryNameInput = document.getElementById('repository-name') as HTMLInputElement | null;
-  const repositoryProjectNameInput = document.getElementById('repository-project-name') as HTMLInputElement | null;
-
-  if (!dialog || !(form instanceof HTMLFormElement) || !(cancelButton instanceof HTMLButtonElement) || !commitHashInput || !repositoryNameInput || !repositoryProjectNameInput) {
-    return Promise.reject(new Error('The commit-link dialog could not be loaded.'));
-  }
-
+  const layoutServicePromise = SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService);
   return new Promise<LinkDetails>((resolve, reject) => {
-    const close = (): void => {
-      form.removeEventListener('submit', handleSubmit);
-      cancelButton.removeEventListener('click', handleCancel);
-    };
-    const handleCancel = (): void => {
-      close();
-      dialog.hidden = true;
-      dialog.classList.remove('is-open');
-      reject(new Error('Commit link entry was cancelled.'));
-    };
-    const handleSubmit = (event: SubmitEvent): void => {
-      event.preventDefault();
-      if (!form.reportValidity()) {
-        return;
-      }
-
-      const commitHash = commitHashInput.value.trim();
-      const repositoryName = repositoryNameInput.value.trim();
-      const repositoryProjectName = repositoryProjectNameInput.value.trim();
-      if (!/^[0-9a-f]{7,64}$/i.test(commitHash)) {
-        commitHashInput.setCustomValidity('Enter a Git commit hash between 7 and 64 hexadecimal characters.');
-        commitHashInput.reportValidity();
-        commitHashInput.setCustomValidity('');
-        return;
-      }
-
-      close();
-      dialog.hidden = true;
-      dialog.classList.remove('is-open');
-      resolve({ commitHash, repositoryName, repositoryProjectName });
-    };
-
-    form.addEventListener('submit', handleSubmit);
-    cancelButton.addEventListener('click', handleCancel);
-    dialog.hidden = false;
-    dialog.classList.add('is-open');
-    commitHashInput.focus();
+    layoutServicePromise.then((layoutService) => {
+      layoutService.openCustomDialog<LinkDetails>('bulk-assign-commit-hash-dialog', {
+        title: 'Link work items to a commit',
+        lightDismiss: false,
+        onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
+      });
+    }).catch(reject);
   });
 }
 
