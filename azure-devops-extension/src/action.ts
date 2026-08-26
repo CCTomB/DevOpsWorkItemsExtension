@@ -132,27 +132,25 @@ interface LinkDetails {
 function getLinkDetails(): Promise<LinkDetails> {
   const dialog = document.getElementById('link-dialog');
   const form = document.getElementById('link-form');
+  const cancelButton = document.getElementById('cancel-link');
   const commitHashInput = document.getElementById('commit-hash') as HTMLInputElement | null;
   const repositoryNameInput = document.getElementById('repository-name') as HTMLInputElement | null;
   const repositoryProjectNameInput = document.getElementById('repository-project-name') as HTMLInputElement | null;
 
-  if (!(dialog instanceof HTMLDialogElement) || !(form instanceof HTMLFormElement) || !commitHashInput || !repositoryNameInput || !repositoryProjectNameInput) {
+  if (!dialog || !(form instanceof HTMLFormElement) || !(cancelButton instanceof HTMLButtonElement) || !commitHashInput || !repositoryNameInput || !repositoryProjectNameInput) {
     return Promise.reject(new Error('The commit-link dialog could not be loaded.'));
   }
 
   return new Promise<LinkDetails>((resolve, reject) => {
     const close = (): void => {
-      dialog.removeEventListener('close', handleClose);
       form.removeEventListener('submit', handleSubmit);
-      form.removeEventListener('reset', handleReset);
+      cancelButton.removeEventListener('click', handleCancel);
     };
-    const handleClose = (): void => {
+    const handleCancel = (): void => {
       close();
+      dialog.hidden = true;
+      dialog.classList.remove('is-open');
       reject(new Error('Commit link entry was cancelled.'));
-    };
-    const handleReset = (event: Event): void => {
-      event.preventDefault();
-      dialog.close('cancel');
     };
     const handleSubmit = (event: SubmitEvent): void => {
       event.preventDefault();
@@ -171,14 +169,15 @@ function getLinkDetails(): Promise<LinkDetails> {
       }
 
       close();
-      dialog.close(event.submitter instanceof HTMLButtonElement ? event.submitter.value : 'submit');
+      dialog.hidden = true;
+      dialog.classList.remove('is-open');
       resolve({ commitHash, repositoryName, repositoryProjectName });
     };
 
-    dialog.addEventListener('close', handleClose);
     form.addEventListener('submit', handleSubmit);
-    form.addEventListener('reset', handleReset);
-    dialog.showModal();
+    cancelButton.addEventListener('click', handleCancel);
+    dialog.hidden = false;
+    dialog.classList.add('is-open');
     commitHashInput.focus();
   });
 }

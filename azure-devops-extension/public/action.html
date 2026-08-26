@@ -17,16 +17,27 @@
       min-width: 320px;
     }
 
-    dialog {
+    .dialog {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      background: rgb(0 0 0 / 35%);
+    }
+
+    .dialog.is-open {
+      display: flex;
+    }
+
+    .dialog-panel {
       width: min(440px, calc(100% - 32px));
       border: 1px solid #d6d6d6;
       border-radius: 4px;
+      background: white;
       padding: 24px;
       box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
-    }
-
-    dialog::backdrop {
-      background: rgb(0 0 0 / 35%);
     }
 
     h1 {
@@ -76,9 +87,9 @@
 </head>
 <body>
   <p id="status">Preparing action...</p>
-  <dialog id="link-dialog">
-    <form method="dialog" id="link-form">
-      <h1>Link work items to a commit</h1>
+  <div id="link-dialog" class="dialog" role="dialog" aria-modal="true" aria-labelledby="link-dialog-title" hidden>
+    <form id="link-form" class="dialog-panel">
+      <h1 id="link-dialog-title">Link work items to a commit</h1>
       <label for="commit-hash">Commit hash</label>
       <input id="commit-hash" name="commitHash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off" />
       <label for="repository-name">Repository name</label>
@@ -86,11 +97,11 @@
       <label for="repository-project-name">Repository project name (optional)</label>
       <input id="repository-project-name" name="repositoryProjectName" placeholder="Defaults to the selected work items' project" autocomplete="off" />
       <menu>
-        <button type="reset" value="cancel">Cancel</button>
+        <button type="button" id="cancel-link" value="cancel">Cancel</button>
         <button type="submit" value="submit">Continue</button>
       </menu>
     </form>
-  </dialog>
+  </div>
   <script src="action.js"></script>
 </body>
 </html>
