@@ -133,7 +133,9 @@ function getLinkDetails(): Promise<LinkDetails> {
   const layoutServicePromise = SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService);
   return new Promise<LinkDetails>((resolve, reject) => {
     layoutServicePromise.then((layoutService) => {
-      layoutService.openCustomDialog<LinkDetails>('bulk-assign-commit-hash-dialog', {
+      const extensionContext = SDK.getExtensionContext();
+      const contributionId = `${extensionContext.publisherId}.${extensionContext.extensionId}.bulk-assign-commit-hash-dialog`;
+      layoutService.openCustomDialog<LinkDetails>(contributionId, {
         title: 'Link work items to a commit',
         lightDismiss: false,
         onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
