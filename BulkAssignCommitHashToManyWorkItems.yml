@@ -15,6 +15,10 @@ parameters:
     displayName: Repository project name
     type: string
     default: ''
+  - name: workItemProjectId
+    displayName: Work item project ID
+    type: string
+    default: ''
 
 pool:
   vmImage: 'windows-latest'
@@ -39,8 +43,14 @@ steps:
 - pwsh: |
     $env:ORG_URL = "$(System.CollectionUri)"
     # If using full organization url, you can set ORG_URL as: https://dev.azure.com/yourOrg/
-    $env:PROJECT_ID = "$(System.TeamProjectId)"
+    $env:PROJECT_ID = '${{ parameters.workItemProjectId }}'
+    if ([string]::IsNullOrWhiteSpace($env:PROJECT_ID)) {
+      $env:PROJECT_ID = "$(System.TeamProjectId)"
+    }
     $env:REPOSITORY_PROJECT_NAME = '${{ parameters.repositoryProjectName }}'
+    if ([string]::IsNullOrWhiteSpace($env:REPOSITORY_PROJECT_NAME)) {
+      $env:REPOSITORY_PROJECT_NAME = $env:PROJECT_ID
+    }
     Write-Host "Task/pipeline project ID: $env:PROJECT_ID"
     Write-Host "Repository project input: '$env:REPOSITORY_PROJECT_NAME'"
     if ([string]::IsNullOrWhiteSpace($env:REPOSITORY_PROJECT_NAME)) {
