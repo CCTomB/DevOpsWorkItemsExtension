@@ -130,20 +130,22 @@ interface LinkDetails {
 }
 
 function getLinkDetails(): Promise<LinkDetails> {
-  const layoutServicePromise = SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService);
-  return new Promise<LinkDetails>((resolve, reject) => {
-    layoutServicePromise.then((layoutService) => {
-      const extensionContext = SDK.getExtensionContext();
-      const contributionId = `${extensionContext.id}.bulk-assign-commit-hash-dialog`;
-      console.info('extension context id: ', extensionContext.id);
-      console.info('Opening bulk assign commit dialog contribution', contributionId);
-      layoutService.openCustomDialog<LinkDetails>(contributionId, {
-        title: 'Link work items to a commit',
-        lightDismiss: false,
-        onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
-      });
-    }).catch(reject);
-  });
+  const value = window.prompt(
+    'Enter the three values separated by new lines:\n\nCommit hash\nRepository name\nRepository project name (leave blank for the selected work-item project)'
+  );
+  if (value === null) {
+    return Promise.reject(new Error('Commit link entry was cancelled.'));
+  }
+
+  const [commitHash = '', repositoryName = '', repositoryProjectName = ''] = value.split(/\r?\n/).map((item) => item.trim());
+  if (!/^[0-9a-f]{7,64}$/i.test(commitHash)) {
+    return Promise.reject(new Error('Enter a Git commit hash between 7 and 64 hexadecimal characters.'));
+  }
+  if (!repositoryName) {
+    return Promise.reject(new Error('Repository name is required.'));
+  }
+
+  return Promise.resolve({ commitHash, repositoryName, repositoryProjectName });
 }
 
 async function queuePipeline(workItemIds: number[], commitHash: string, repositoryName: string, repositoryProjectName: string, workItemProjectId: string): Promise<void> {
