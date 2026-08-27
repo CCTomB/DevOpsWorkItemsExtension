@@ -130,51 +130,17 @@ interface LinkDetails {
 }
 
 function getLinkDetails(): Promise<LinkDetails> {
-  const popup = window.open('', 'bulk-assign-commit-hash', 'popup,width=560,height=460,resizable=yes');
-  if (!popup) {
-    return Promise.reject(new Error('The input form could not be opened. Allow pop-ups for Azure DevOps and try again.'));
-  }
-
-  popup.document.title = 'Link work items to a commit';
-  popup.document.body.innerHTML = `
-    <style>
-      body { margin: 0; padding: 28px; font: 14px "Segoe UI", sans-serif; color: #242424; }
-      h1 { margin: 0 0 24px; font-size: 20px; font-weight: 600; }
-      label { display: block; margin: 16px 0 6px; font-weight: 600; }
-      input { box-sizing: border-box; width: 100%; padding: 9px; border: 1px solid #8a8886; border-radius: 2px; font: inherit; }
-      .actions { display: flex; justify-content: flex-end; margin-top: 28px; }
-      button { padding: 8px 18px; border: 1px solid #0078d4; border-radius: 2px; color: white; background: #0078d4; font: inherit; cursor: pointer; }
-    </style>
-    <form id="link-form">
-      <h1>Link work items to a commit</h1>
-      <label for="commit-hash">Commit hash</label>
-      <input id="commit-hash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off">
-      <label for="repository-name">Repository name</label>
-      <input id="repository-name" required autocomplete="off">
-      <label for="repository-project-name">Repository project name (optional)</label>
-      <input id="repository-project-name" placeholder="Defaults to the selected work-item project" autocomplete="off">
-      <div class="actions"><button type="submit">Submit</button></div>
-    </form>`;
-
   return new Promise<LinkDetails>((resolve, reject) => {
-    const form = popup.document.getElementById('link-form') as HTMLFormElement;
-    const commitHashInput = popup.document.getElementById('commit-hash') as HTMLInputElement;
-    const repositoryNameInput = popup.document.getElementById('repository-name') as HTMLInputElement;
-    const repositoryProjectNameInput = popup.document.getElementById('repository-project-name') as HTMLInputElement;
-    form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      if (!form.reportValidity()) {
-        return;
-      }
-
-      resolve({
-        commitHash: commitHashInput.value.trim(),
-        repositoryName: repositoryNameInput.value.trim(),
-        repositoryProjectName: repositoryProjectNameInput.value.trim()
+    SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService).then((dialogService) => {
+      const extensionContext = SDK.getExtensionContext();
+      const contributionId = `${extensionContext.id}.bulk-assign-commit-hash-dialog`;
+      console.info('Opening bulk assign commit dialog contribution', contributionId);
+      dialogService.openCustomDialog<LinkDetails>(contributionId, {
+        title: 'Link work items to a commit',
+        lightDismiss: false,
+        onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
       });
-      popup.close();
-    });
-    commitHashInput.focus();
+    }).catch(reject);
   });
 }
 
