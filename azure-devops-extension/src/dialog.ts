@@ -32,8 +32,9 @@ form?.addEventListener('submit', (event) => {
 
 cancelButton?.addEventListener('click', () => closeDialog());
 
-SDK.init({ loaded: false });
+SDK.init();
 SDK.ready().then(() => {
+  console.info('Bulk Assign Commit Hash dialog content loaded');
   commitHashInput?.focus();
   return SDK.notifyLoadSucceeded();
 });
