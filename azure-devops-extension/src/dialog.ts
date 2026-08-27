@@ -32,7 +32,7 @@ form?.addEventListener('submit', (event) => {
 
 cancelButton?.addEventListener('click', () => closeDialog());
 
-SDK.init();
+SDK.init({ loaded: false });
 SDK.ready().then(() => {
   commitHashInput?.focus();
   return SDK.notifyLoadSucceeded();
