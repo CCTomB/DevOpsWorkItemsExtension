@@ -134,7 +134,9 @@ function getLinkDetails(): Promise<LinkDetails> {
   return new Promise<LinkDetails>((resolve, reject) => {
     layoutServicePromise.then((layoutService) => {
       const extensionContext = SDK.getExtensionContext();
-      const contributionId = `${extensionContext.publisherId}.${extensionContext.extensionId}.bulk-assign-commit-hash-dialog`;
+      const contributionId = `${extensionContext.id}.bulk-assign-commit-hash-dialog`;
+      console.info('extension context id: ', extensionContext.id);
+      console.info('Opening bulk assign commit dialog contribution', contributionId);
       layoutService.openCustomDialog<LinkDetails>(contributionId, {
         title: 'Link work items to a commit',
         lightDismiss: false,
