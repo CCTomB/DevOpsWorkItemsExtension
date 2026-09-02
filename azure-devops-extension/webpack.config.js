@@ -2,12 +2,9 @@ const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  entry: {
-    action: './src/action.ts',
-    dialog: './src/dialog.ts'
-  },
+  entry: './src/action.ts',
   output: {
-    filename: '[name].js',
+    filename: 'action.js',
     path: path.resolve(__dirname, 'dist'),
     clean: true
   },
