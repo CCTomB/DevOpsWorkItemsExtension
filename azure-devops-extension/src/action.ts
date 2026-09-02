@@ -129,41 +129,18 @@ interface LinkDetails {
   repositoryProjectName: string;
 }
 
-function waitForDialogReady(): Promise<void> {
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    return Promise.resolve();
-  }
-
-  return new Promise<void>((resolve) => {
-    window.addEventListener('DOMContentLoaded', () => resolve(), { once: true });
-  });
-}
-
 function getLinkDetails(): Promise<LinkDetails> {
-  return waitForDialogReady().then(() => {
-    const form = document.getElementById('link-form');
-    const commitHashInput = document.getElementById('commit-hash') as HTMLInputElement | null;
-    const repositoryNameInput = document.getElementById('repository-name') as HTMLInputElement | null;
-    const repositoryProjectNameInput = document.getElementById('repository-project-name') as HTMLInputElement | null;
-    if (!(form instanceof HTMLFormElement) || !commitHashInput || !repositoryNameInput || !repositoryProjectNameInput) {
-      throw new Error('The commit-link form could not be loaded.');
-    }
-
-    return new Promise<LinkDetails>((resolve) => {
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
-        if (!form.reportValidity()) {
-          return;
-        }
-
-        resolve({
-          commitHash: commitHashInput.value.trim(),
-          repositoryName: repositoryNameInput.value.trim(),
-          repositoryProjectName: repositoryProjectNameInput.value.trim()
-        });
-      }, { once: true });
-      commitHashInput.focus();
-    });
+  return new Promise<LinkDetails>((resolve, reject) => {
+    SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService).then((dialogService) => {
+      const extensionContext = SDK.getExtensionContext();
+      const contributionId = `${extensionContext.id}.bulk-assign-commit-hash-dialog`;
+      console.info('Opening bulk assign commit dialog contribution', contributionId);
+      dialogService.openCustomDialog<LinkDetails>(contributionId, {
+        title: 'Link work items to a commit',
+        lightDismiss: false,
+        onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
+      });
+    }).catch(reject);
   });
 }
 
@@ -214,9 +191,7 @@ async function queuePipeline(workItemIds: number[], commitHash: string, reposito
   await showMessage(`Pipeline queued successfully${runId}.`);
 }
 
-SDK.init({
-  loaded: false
-});
+SDK.init();
 
 SDK.register('bulk-assign-commit-hash-action', () => ({
   execute: async (actionContext: unknown) => {

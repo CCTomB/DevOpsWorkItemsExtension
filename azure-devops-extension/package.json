@@ -1,6 +1,6 @@
 {
   "name": "bulk-assign-commit-hash-devops-extension",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Queue the BulkAssignCommitHashToManyWorkItems pipeline for selected Azure DevOps work items.",
   "scripts": {
