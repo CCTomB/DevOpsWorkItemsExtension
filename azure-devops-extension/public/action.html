@@ -14,16 +14,6 @@
   </style>
 </head>
 <body>
-  <form id="link-form">
-    <h1>Link work items to a commit</h1>
-    <label for="commit-hash">Commit hash</label>
-    <input id="commit-hash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off" />
-    <label for="repository-name">Repository name</label>
-    <input id="repository-name" required autocomplete="off" />
-    <label for="repository-project-name">Repository project name (optional)</label>
-    <input id="repository-project-name" placeholder="Defaults to the selected work-item project" autocomplete="off" />
-    <button type="submit">Submit</button>
-  </form>
   <p id="status" aria-live="polite">Preparing action...</p>
   <script src="action.js"></script>
 </body>

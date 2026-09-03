@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "bulk-assign-commit-hash",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "name": "Bulk Assign Commit Hash",
   "publisher": "CornwallCouncil",
   "description": "Queue the commit-linking pipeline for multiple selected Azure DevOps work items.",
@@ -25,17 +25,11 @@
   "contributions": [
     {
       "id": "bulk-assign-commit-hash-dialog",
-      "type": "ms.vss-web.dialog-content",
+      "type": "ms.vss-web.control",
       "description": "Collects the commit and repository values.",
-      "targets": [
-        "ms.vss-web.dialog"
-      ],
+      "targets": [],
       "properties": {
-        "uri": "dist/dialog.html",
-        "options": {
-          "height": 360,
-          "width": 520
-        }
+        "uri": "dist/dialog.html"
       }
     },
     {
