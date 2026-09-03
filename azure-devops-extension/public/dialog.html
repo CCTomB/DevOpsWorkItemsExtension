@@ -17,19 +17,17 @@
   </style>
 </head>
 <body>
-  <form id="link-form">
-    <h1>Link work items to a commit</h1>
-    <label for="commit-hash">Commit hash</label>
-    <input id="commit-hash" name="commitHash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off" />
-    <label for="repository-name">Repository name</label>
-    <input id="repository-name" name="repositoryName" required autocomplete="off" />
-    <label for="repository-project-name">Repository project name (optional)</label>
-    <input id="repository-project-name" name="repositoryProjectName" placeholder="Defaults to the selected work items' project" autocomplete="off" />
-    <menu>
-      <button type="button" id="cancel-link">Cancel</button>
-      <button type="submit">Continue</button>
-    </menu>
-  </form>
+  <h1>Link work items to a commit</h1>
+  <label for="commit-hash">Commit hash</label>
+  <input id="commit-hash" name="commitHash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off" />
+  <label for="repository-name">Repository name</label>
+  <input id="repository-name" name="repositoryName" required autocomplete="off" />
+  <label for="repository-project-name">Repository project name (optional)</label>
+  <input id="repository-project-name" name="repositoryProjectName" placeholder="Defaults to the selected work items' project" autocomplete="off" />
+  <menu>
+    <button type="button" id="cancel-link">Cancel</button>
+    <button type="button" id="continue-link">Continue</button>
+  </menu>
   <script src="dialog.js"></script>
 </body>
 </html>
