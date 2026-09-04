@@ -6,28 +6,10 @@
   <title>Bulk Assign Commit Hash</title>
   <style>
     body { margin: 0; padding: 20px; font: 14px "Segoe UI", sans-serif; color: #242424; }
-    main { max-width: 520px; }
-    h1 { margin: 0 0 20px; font-size: 20px; font-weight: 600; }
-    label { display: block; margin: 14px 0 6px; font-weight: 600; }
-    input { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid #8a8886; border-radius: 2px; font: inherit; }
-    button { margin-top: 22px; padding: 8px 18px; border: 1px solid #0078d4; border-radius: 2px; color: white; background: #0078d4; font: inherit; cursor: pointer; }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Link work items to a commit</h1>
-    <label for="commit-hash">Commit hash</label>
-    <input id="commit-hash" name="commitHash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off" />
-    <label for="repository-name">Repository name</label>
-    <input id="repository-name" name="repositoryName" required autocomplete="off" />
-    <label for="repository-project-name">Repository project name (optional)</label>
-    <input id="repository-project-name" name="repositoryProjectName" placeholder="Defaults to the selected work items' project" autocomplete="off" />
-    <menu>
-      <button type="button" id="cancel-link">Cancel</button>
-      <button type="button" id="continue-link">Continue</button>
-    </menu>
-    <p id="status" aria-live="polite">Preparing action...</p>
-  </main>
+  <p id="status" aria-live="polite">Preparing action...</p>
   <script src="action.js"></script>
 </body>
 </html>

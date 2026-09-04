@@ -4,11 +4,6 @@ import { CommonServiceIds, IHostPageLayoutService } from 'azure-devops-extension
 const pipelineName = 'BulkAssignCommitHashToManyWorkItems';
 const statusElement = document.getElementById('status');
 const pipelineRequestTimeoutMs = 30000;
-const commitHashInput = document.getElementById('commit-hash') as HTMLInputElement | null;
-const repositoryNameInput = document.getElementById('repository-name') as HTMLInputElement | null;
-const repositoryProjectNameInput = document.getElementById('repository-project-name') as HTMLInputElement | null;
-const cancelButton = document.getElementById('cancel-link') as HTMLButtonElement | null;
-const continueButton = document.getElementById('continue-link') as HTMLButtonElement | null;
 
 function setStatus(message: string): void {
   if (statusElement) {
@@ -128,29 +123,30 @@ function getSelectedWorkItemIds(actionContext: unknown): number[] {
   return workItemIds;
 }
 
-interface LinkDetails {
-  commitHash: string;
-  repositoryName: string;
-  repositoryProjectName: string;
+function getCommitHash(): string {
+  const commitHash = window.prompt('Enter the Git commit hash to link to the selected work items:')?.trim();
+  if (!commitHash) {
+    throw new Error('Commit hash entry was cancelled.');
+  }
+
+  if (!/^[0-9a-f]{7,64}$/i.test(commitHash)) {
+    throw new Error('Enter a Git commit hash between 7 and 64 hexadecimal characters.');
+  }
+
+  return commitHash;
 }
 
-function getLinkDetails(): Promise<LinkDetails> {
-  return new Promise<LinkDetails>((resolve, reject) => {
-    continueButton?.addEventListener('click', () => {
-      if (!commitHashInput || !repositoryNameInput || !repositoryProjectNameInput ||
-          !commitHashInput.reportValidity() || !repositoryNameInput.reportValidity() || !repositoryProjectNameInput.reportValidity()) {
-        return;
-      }
+function getRepositoryName(): string {
+  const repositoryName = window.prompt('Enter the Azure Repos repository name containing the commit:')?.trim();
+  if (!repositoryName) {
+    throw new Error('Repository name entry was cancelled.');
+  }
 
-      resolve({
-        commitHash: commitHashInput.value.trim(),
-        repositoryName: repositoryNameInput.value.trim(),
-        repositoryProjectName: repositoryProjectNameInput.value.trim()
-      });
-    }, { once: true });
+  return repositoryName;
+}
 
-    cancelButton?.addEventListener('click', () => reject(new Error('Commit link entry was cancelled.')), { once: true });
-  });
+function getRepositoryProjectName(): string {
+  return window.prompt('Enter the Azure DevOps project name containing the repository (leave blank for the selected work-item project):')?.trim() ?? '';
 }
 
 async function queuePipeline(workItemIds: number[], commitHash: string, repositoryName: string, repositoryProjectName: string, workItemProjectId: string): Promise<void> {
@@ -201,11 +197,6 @@ async function queuePipeline(workItemIds: number[], commitHash: string, reposito
 }
 
 SDK.init();
-SDK.ready().then(() => {
-  console.info('Bulk Assign Commit Hash action content loaded');
-  commitHashInput?.focus();
-  return SDK.notifyLoadSucceeded();
-});
 
 SDK.register('bulk-assign-commit-hash-action', () => ({
   execute: async (actionContext: unknown) => {
@@ -215,7 +206,9 @@ SDK.register('bulk-assign-commit-hash-action', () => ({
         throw new Error('No selected work item IDs were supplied by Azure DevOps.');
       }
 
-      const { commitHash, repositoryName, repositoryProjectName } = await getLinkDetails();
+      const commitHash = getCommitHash();
+      const repositoryName = getRepositoryName();
+      const repositoryProjectName = getRepositoryProjectName();
       setStatus(`Queueing for ${workItemIds.length} work items...`);
       await queuePipeline(workItemIds, commitHash, repositoryName, repositoryProjectName, SDK.getWebContext().project?.id ?? '');
       await SDK.notifyLoadSucceeded();
