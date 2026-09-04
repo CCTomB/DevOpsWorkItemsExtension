@@ -3,7 +3,8 @@ const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: {
-    action: './src/action.ts'
+    action: './src/action.ts',
+    dialog: './src/dialog.ts'
   },
   output: {
     filename: '[name].js',

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Link work items to a commit</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", sans-serif; color: #242424; }
+    html, body { min-height: 320px; }
+    body { margin: 0; padding: 24px; }
+    main { max-width: 520px; }
+    h1 { margin: 0 0 20px; font-size: 20px; font-weight: 600; }
+    label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 600; }
+    input { box-sizing: border-box; width: 100%; border: 1px solid #8a8886; border-radius: 2px; padding: 8px; font: inherit; }
+    menu { display: flex; justify-content: flex-end; gap: 8px; margin: 24px 0 0; padding: 0; }
+    button { border: 1px solid #8a8886; border-radius: 2px; padding: 7px 14px; font: inherit; cursor: pointer; }
+    button.primary { border-color: #0078d4; color: white; background: #0078d4; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Link work items to a commit</h1>
+    <label for="commit-hash">Commit hash</label>
+    <input id="commit-hash" required pattern="[0-9a-fA-F]{7,64}" autocomplete="off" />
+    <label for="repository-name">Repository name</label>
+    <input id="repository-name" required autocomplete="off" />
+    <label for="repository-project-name">Repository project name (optional)</label>
+    <input id="repository-project-name" placeholder="Defaults to the selected work items' project" autocomplete="off" />
+    <menu>
+      <button type="button" id="cancel-link">Cancel</button>
+      <button type="button" id="continue-link" class="primary">Continue</button>
+    </menu>
+  </main>
+  <script src="dialog.js"></script>
+</body>
+</html>

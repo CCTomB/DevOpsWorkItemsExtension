@@ -123,30 +123,24 @@ function getSelectedWorkItemIds(actionContext: unknown): number[] {
   return workItemIds;
 }
 
-function getCommitHash(): string {
-  const commitHash = window.prompt('Enter the Git commit hash to link to the selected work items:')?.trim();
-  if (!commitHash) {
-    throw new Error('Commit hash entry was cancelled.');
-  }
-
-  if (!/^[0-9a-f]{7,64}$/i.test(commitHash)) {
-    throw new Error('Enter a Git commit hash between 7 and 64 hexadecimal characters.');
-  }
-
-  return commitHash;
+interface LinkDetails {
+  commitHash: string;
+  repositoryName: string;
+  repositoryProjectName: string;
 }
 
-function getRepositoryName(): string {
-  const repositoryName = window.prompt('Enter the Azure Repos repository name containing the commit:')?.trim();
-  if (!repositoryName) {
-    throw new Error('Repository name entry was cancelled.');
-  }
-
-  return repositoryName;
-}
-
-function getRepositoryProjectName(): string {
-  return window.prompt('Enter the Azure DevOps project name containing the repository (leave blank for the selected work-item project):')?.trim() ?? '';
+function getLinkDetails(): Promise<LinkDetails> {
+  return new Promise<LinkDetails>((resolve, reject) => {
+    SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService).then((dialogService) => {
+      const contributionId = `${SDK.getExtensionContext().id}.commit-link-dialog`;
+      console.info('Opening bulk assign commit dialog contribution', contributionId);
+      dialogService.openCustomDialog<LinkDetails>(contributionId, {
+        title: 'Link work items to a commit',
+        lightDismiss: false,
+        onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
+      });
+    }).catch(reject);
+  });
 }
 
 async function queuePipeline(workItemIds: number[], commitHash: string, repositoryName: string, repositoryProjectName: string, workItemProjectId: string): Promise<void> {
@@ -206,9 +200,7 @@ SDK.register('bulk-assign-commit-hash-action', () => ({
         throw new Error('No selected work item IDs were supplied by Azure DevOps.');
       }
 
-      const commitHash = getCommitHash();
-      const repositoryName = getRepositoryName();
-      const repositoryProjectName = getRepositoryProjectName();
+      const { commitHash, repositoryName, repositoryProjectName } = await getLinkDetails();
       setStatus(`Queueing for ${workItemIds.length} work items...`);
       await queuePipeline(workItemIds, commitHash, repositoryName, repositoryProjectName, SDK.getWebContext().project?.id ?? '');
       await SDK.notifyLoadSucceeded();
