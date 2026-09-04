@@ -4,6 +4,11 @@ import { CommonServiceIds, IHostPageLayoutService } from 'azure-devops-extension
 const pipelineName = 'BulkAssignCommitHashToManyWorkItems';
 const statusElement = document.getElementById('status');
 const pipelineRequestTimeoutMs = 30000;
+const commitHashInput = document.getElementById('commit-hash') as HTMLInputElement | null;
+const repositoryNameInput = document.getElementById('repository-name') as HTMLInputElement | null;
+const repositoryProjectNameInput = document.getElementById('repository-project-name') as HTMLInputElement | null;
+const cancelButton = document.getElementById('cancel-link') as HTMLButtonElement | null;
+const continueButton = document.getElementById('continue-link') as HTMLButtonElement | null;
 
 function setStatus(message: string): void {
   if (statusElement) {
@@ -131,16 +136,20 @@ interface LinkDetails {
 
 function getLinkDetails(): Promise<LinkDetails> {
   return new Promise<LinkDetails>((resolve, reject) => {
-    SDK.getService<IHostPageLayoutService>(CommonServiceIds.HostPageLayoutService).then((dialogService) => {
-      const extensionContext = SDK.getExtensionContext();
-      const contributionId = `${extensionContext.publisherId}.${extensionContext.extensionId}.bulk-assign-commit-hash-dialog`;
-      console.info('Opening bulk assign commit dialog contribution', contributionId);
-      dialogService.openCustomDialog<LinkDetails>(contributionId, {
-        title: 'Link work items to a commit',
-        lightDismiss: false,
-        onClose: (result) => result ? resolve(result) : reject(new Error('Commit link entry was cancelled.'))
+    continueButton?.addEventListener('click', () => {
+      if (!commitHashInput || !repositoryNameInput || !repositoryProjectNameInput ||
+          !commitHashInput.reportValidity() || !repositoryNameInput.reportValidity() || !repositoryProjectNameInput.reportValidity()) {
+        return;
+      }
+
+      resolve({
+        commitHash: commitHashInput.value.trim(),
+        repositoryName: repositoryNameInput.value.trim(),
+        repositoryProjectName: repositoryProjectNameInput.value.trim()
       });
-    }).catch(reject);
+    }, { once: true });
+
+    cancelButton?.addEventListener('click', () => reject(new Error('Commit link entry was cancelled.')), { once: true });
   });
 }
 
@@ -192,6 +201,11 @@ async function queuePipeline(workItemIds: number[], commitHash: string, reposito
 }
 
 SDK.init();
+SDK.ready().then(() => {
+  console.info('Bulk Assign Commit Hash action content loaded');
+  commitHashInput?.focus();
+  return SDK.notifyLoadSucceeded();
+});
 
 SDK.register('bulk-assign-commit-hash-action', () => ({
   execute: async (actionContext: unknown) => {
